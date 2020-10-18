@@ -1,0 +1,87 @@
+---
+title: "Crime Prediction"
+author: "Anna Duan"
+date: "10/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(sf)
+library(RSocrata)
+library(viridis)
+library(spatstat)
+library(raster)
+library(spdep)
+library(FNN)
+library(grid)
+library(gridExtra)
+library(knitr)
+library(kableExtra)
+library(tidycensus)
+root.dir = "https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/DATA/"
+source("https://raw.githubusercontent.com/urbanSpatial/Public-Policy-Analytics-Landing/master/functions.r")
+
+```
+
+```{r data wrangle, include=FALSE}
+policeDistricts <- 
+  st_read("https://data.cityofchicago.org/api/geospatial/fthy-xz3r?method=export&format=GeoJSON") %>%
+  st_transform('ESRI:102271') %>%
+  dplyr::select(District = dist_num)
+  
+policeBeats <- 
+  st_read("https://data.cityofchicago.org/api/geospatial/aerh-rz74?method=export&format=GeoJSON") %>%
+  st_transform('ESRI:102271') %>%
+  dplyr::select(District = beat_num)
+
+bothPoliceUnits <- rbind(mutate(policeDistricts, Legend = "Police Districts"), 
+                         mutate(policeBeats, Legend = "Police Beats"))
+
+chicagoBound <- 
+  st_read(file.path(root.dir,"/Chapter5/chicagoBoundary.geojson")) %>%
+  st_transform('ESRI:102271') 
+
+fishnet <- 
+  st_make_grid(chicagoBound, cellsize = 500) %>%
+  st_sf() %>%
+  mutate(uniqueID = rownames(.))
+```
+
+```{r MAP 1: outcome of interest in point form}
+```
+
+```{r MAP 2: outcome joined to fishnet}
+```
+
+```{r MAP 3: small multiple map of risk factors in feshnet}
+```
+
+```{r MAP 4: Local Moran's I small multiple map of outcome}
+```
+
+```{r PLOT 5: Small multiple scatterplot of correlations}
+```
+
+```{r FIG 6: HIstogram of dependent variable}
+```
+
+```{r MAP 7: small multiple map of model errors by random k-fold and spatial cross validation}
+```
+
+```{r TABLE 1: table of MAE and standard deviation MAE by regression}
+```
+
+```{r TABLE 2: table of raw errors by race context for a random k-fold vs. spatial cross validation regression}
+```
+
+```{r MAP 8: map comparing kernel density to risk predictions for the next year's crime}
+```
+
+```{r PLOT 9: bar plot making this comparison}
+```
+
+## Conclusion 
+*2 paragraphs: would we recommend this algorithm*
+
