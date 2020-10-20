@@ -107,9 +107,8 @@ liquorRetail <-
     mutate(Legend = "Liquor_Retail")
 
 bus_stops <-
-  read.csv("https://data.cityofchicago.org/Transportation/CTA-Bus-Stops-Shapefile/pxug-u72f") %>%  
-    #filter(business_activity == "bus stops") %>%
-    dplyr::select(Y = latitude, X = longitude) %>%
+  st_read("/Users/annaduan/Documents/GitHub/Project-3-Risk-Prediction/CTA_BusStops/CTA_BusStops.shp") %>%
+    dplyr::select(Y = POINT_Y, X = POINT_X) %>%
     na.omit() %>%
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
     st_transform(st_crs(fishnet)) %>%
@@ -211,6 +210,9 @@ vars_net <-
     na.omit() %>%
     ungroup()
 
+vars_net <- vars_net %>%
+  st_join(., acs)
+
 
 ##nearest neighborhoods##
 
@@ -269,7 +271,7 @@ for(i in vars){
       geom_sf(data = filter(vars_net.long.nn, Variable == i), aes(fill=value), colour=NA) +
       scale_fill_viridis(name="") +
       labs(title=i) +
-      mapTheme()}
+      mapTheme()}   #AD: does this work for you?
 
 do.call(grid.arrange,c(mapList, ncol = 3, top = "Nearest Neighbor risk Factors by Fishnet"))
 
@@ -297,7 +299,7 @@ final_net <-
       st_sf() %>%
   na.omit()
 
-##exploring the spatial process of robbery##
+##exploring the spatial process of arrests##
 final_net.nb <- poly2nb(as_Spatial(final_net), queen=TRUE)
 final_net.weights <- nb2listw(final_net.nb, style="W", zero.policy=TRUE)
 
@@ -305,25 +307,25 @@ final_net.weights <- nb2listw(final_net.nb, style="W", zero.policy=TRUE)
 
 final_net <-
   final_net %>% 
-  mutate(robbery.isSig = 
-           ifelse(localmoran(final_net$countrobbery.gun, 
+  mutate(arrests.isSig = 
+           ifelse(localmoran(final_net$countArrest, 
                              final_net.weights)[,5] <= 0.0000001, 1, 0)) %>%
-  mutate(robbery.isSig.dist = 
+  mutate(arrests.isSig.dist = 
            nn_function(st_coordinates(st_centroid(final_net)),
                        st_coordinates(st_centroid(
-                         filter(final_net, robbery.isSig == 1))), 1))
+                         filter(final_net, arrests.isSig == 1))), 1))
 
 ##correlation test##
 
 correlation.long <-
   st_drop_geometry(final_net) %>%
     dplyr::select(-uniqueID, -cvID, -loopDistance, -name, -District) %>%
-    gather(Variable, Value, -countrobbery.gun)
+    gather(Variable, Value, -countArrest)
 
 correlation.cor <-
   correlation.long %>%
     group_by(Variable) %>%
-    summarize(correlation = cor(Value, countrobbery.gun, use = "complete.obs"))
+    summarize(correlation = cor(Value, countArrest, use = "complete.obs"))
 
 
 ```
@@ -388,7 +390,7 @@ final_net.localMorans <-
     as.data.frame(localmoran(final_net$countArrest, final_net.weights)),
     as.data.frame(final_net)) %>% 
     st_sf() %>%
-      dplyr::select(Robbery_Count = countArrest, 
+      dplyr::select(Arrest_Count = countArrest, 
                     Local_Morans_I = Ii, 
                     P_Value = `Pr(z > 0)`) %>%
       mutate(Significant_Hotspots = ifelse(P_Value <= 0.05, 1, 0)) %>% #we can change the p_value here
