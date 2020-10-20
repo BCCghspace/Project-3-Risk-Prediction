@@ -123,11 +123,14 @@ census_api_key("d9ebfd04caa0138647fbacd94c657cdecbf705e9", install = TRUE, overw
 #row 2: white, population, renter occ, owner occ, #no HS degree
 #row 3: male adults, female adults, poverty level, youth unemployed (18-34, veteran), youth unemployed (non veteran)
 #row 4-5: male 15-17, male 18-19, male 20, male 21, male 22-24, male 25-29, male 30-34
+#row 6-7: female 18-34
 acs <-
   get_acs(geography = "tract", variables = c("B25002_003E", "B25001_001E", "B19013_001E", "B01001A_001E", "B01003_001E", "B07013_002E", "B07013_003E", "B06009_002E", 
-"B05003_008E", "B05003_019E", "B06012_001E", "B21005_006E", "B21005_011E", 
-"B01001_006E", "B01001_007E", "B01001_008E", "B01001_009E","B01001_010E", "B01001_011E", "B01001_012E"), year=2018, state=17, county=140, geometry=T) %>%
-  st_transform('ESRI:102271')
+"B05003_008E", "B05003_019E", "B06012_002", "B21005_006E", "B21005_011E", 
+"B01001_006E", "B01001_007E", "B01001_008E", "B01001_009E","B01001_010E", "B01001_011E", "B01001_012E",
+"B01001_031E", "B01001_032E", "B01001_033E", "B01001_034E", "B01001_035E", "B01001_036E"
+), year=2018, state=17, county=031, geometry=T) %>%
+  st_transform(st_crs(fishnet))
   
 #filter for chicago tracts
 acs <-
@@ -160,22 +163,22 @@ acs <-
          noHsDegree = B06009_002,
          maleAdult = B05003_008,
          femaleAdult = B05003_019,
-         poverty = B06012_001,
+         poverty = B06012_002,
          youthUnempVet = B21005_006,
          youthUnempNonVet = B21005_011,
-         female1819
-         female20
-         female21
-         female2224
-         female2529
-         female3034
          male1517 = B01001_006,
          male1819 = B01001_007,
          male20 = B01001_008,
          male21 = B01001_009,
          male2224 = B01001_010,
          male2529 = B01001_011,
-         male3034 = B01001_012)
+         male3034 = B01001_012,
+         female1819 = B01001_031,
+         female20 = B01001_032,
+         female21 = B01001_033,
+         female2224 = B01001_034,
+         female2529 = B01001_035,
+         female3034 = B01001_036)
 
 acs <- 
   acs %>%
@@ -183,12 +186,10 @@ acs <-
          pctWhite = ifelse(population > 0, white / population, 0), 
          pctRenterOcc = renterOcc/ (renterOcc + ownerOcc),
          pctNoHS = noHsDegree/ (maleAdult + femaleAdult),
-         #pct poverty
-         youthUnemploy = (youthUnempVet + youthUnempNonVet) / 
-         pctMaleYouth
-         
-         ) %>%
-  dplyr::select(-Households_hmow,-Households_hmre,-noVehicle_hmow,-noVehicle_hmre,-bachelor)
+         pctPoverty = ifelse(population > 0, poverty / population, 0),
+         youthUnemploy = (youthUnempVet + youthUnempNonVet) / (male1819 + male20 + male21 + male2224 + male2529 + male3034 + female1819 + female20 + female21 + female2224 + female2529 + female3034),
+         pctMaleYouth = ifelse(population > 0, (male1517 + male1819 + male20 + male21 + male2224 + male2529 + male3034) / population, 0)) %>%
+  dplyr::select(-totalUnits,-vacantUnits,-white,-renterOcc,-ownerOcc, -noHsDegree, -maleAdult, -femaleAdult, -youthUnempVet, -youthUnempNonVet, -male1517, -male1819, -male20, -male21, -male2224, -male2529, -male3034, -female1819, -female20, -female21, -female2224, -female2529, -female3034, -poverty)
 
 
 neighborhoods <- 
@@ -329,8 +330,7 @@ correlation.cor <-
 
 ```{r MAP 1: outcome of interest in point form}
 arrests <- 
-  read.socrata("https://data.cityofchicago.org/Public-Safety/Crimes-2017/d62x-nvdr") %>% 
-    filter(Arrest == "true") %>%
+  read.socrata("https://data.cityofchicago.org/Public-Safety/Crimes-2017/d62x-nvdr?Arrest=true") %>% 
     mutate(x = gsub("[()]", "", Location)) %>%
     separate(x,into= c("Y","X"), sep=",") %>%
     mutate(X = as.numeric(X),Y = as.numeric(Y)) %>% 
@@ -338,24 +338,27 @@ arrests <-
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant")%>%
     st_transform('ESRI:102271') %>% 
     distinct()
-#needs polished
-#not sure which one to use because the map with only gun-armed is really dispersed
-#AD: let's try arrests?
+
+ggplot() +
+  geom_sf(data = chicagoBound, fill = "black") +
+  geom_sf(data = arrests, colour = "red", size = 0.1) +
+  labs(title = "Arrests Made, 2017", subtitle = "Chicago, IL") +
+  mapTheme()
 ```
 
 ```{r MAP 2: outcome joined to fishnet}
 crime_net <- 
-  dplyr::select(robbery_gun) %>% 
-  mutate(countrobbery.gun = 1) %>% 
+  dplyr::select(arrests) %>% 
+  mutate(countArrests = 1) %>% 
   aggregate(., fishnet, sum) %>%
-  mutate(countrobbery.gun = replace_na(countrobbery.gun, 0),
+  mutate(countArrests = replace_na(countArrests, 0),
          uniqueID = rownames(.),
          cvID = sample(round(nrow(fishnet) / 24), size=nrow(fishnet), replace = TRUE))
 
 ggplot() +
-  geom_sf(data = crime_net, aes(fill = countrobbery.gun)) +
+  geom_sf(data = crime_net, aes(fill = countArrests)) +
   scale_fill_viridis() +
-  labs(title = "Count of Gun-armed Robberies for the fishnet") +
+  labs(title = "Count of Arrests for the fishnet") +
   mapTheme()
 ```
 
@@ -418,7 +421,7 @@ ggplot(correlation.long, aes(Value, countrobbery.gun)) +
 
 ```
 
-```{r FIG 6: HIstogram of dependent variable}
+```{r FIG 6: Histogram of dependent variable}
 hist(final_net$countrobbery.gun)
 ```
 
