@@ -385,10 +385,10 @@ do.call(grid.arrange,c(mapList, ncol =3, top = "Risk Factors by Fishnet"))
 ```{r MAP 4: Local Moran's I small multiple map of outcome}
 final_net.localMorans <- 
   cbind(
-    as.data.frame(localmoran(final_net$countrobbery.gun, final_net.weights)),
+    as.data.frame(localmoran(final_net$countArrest, final_net.weights)),
     as.data.frame(final_net)) %>% 
     st_sf() %>%
-      dplyr::select(Robbery_Count = countrobbery.gun, 
+      dplyr::select(Robbery_Count = countArrest, 
                     Local_Morans_I = Ii, 
                     P_Value = `Pr(z > 0)`) %>%
       mutate(Significant_Hotspots = ifelse(P_Value <= 0.05, 1, 0)) %>% #we can change the p_value here
@@ -406,23 +406,23 @@ for(i in vars){
       labs(title=i) +
       mapTheme() + theme(legend.position="bottom")}
 
-do.call(grid.arrange,c(varList, ncol = 4, top = "Local Morans I statistics, Robbery"))
+do.call(grid.arrange,c(varList, ncol = 4, top = "Local Morans I statistics, Arrests"))
 ```
 
 ```{r PLOT 5: Small multiple scatterplot of correlations}
-ggplot(correlation.long, aes(Value, countrobbery.gun)) +
+ggplot(correlation.long, aes(Value, countArrest)) +
   geom_point(size = 0.1) +
   geom_text(data = correlation.cor, aes(label = paste("r =", round(correlation, 2))),
             x=-Inf, y=Inf, vjust = 1.5, hjust = -.1) +
   geom_smooth(method = "lm", se = FALSE, colour = "black") +
   facet_wrap(~Variable, ncol = 2, scales = "free") +
-  labs(title = "Robbery count as a function of risk factors") +
+  labs(title = "Arrest count as a function of risk factors") +
   plotTheme()
 
 ```
 
 ```{r FIG 6: Histogram of dependent variable}
-hist(final_net$countrobbery.gun)
+hist(final_net$countArrest)
 ```
 
 ```{r MAP 7: small multiple map of model errors by random k-fold and spatial cross validation}
