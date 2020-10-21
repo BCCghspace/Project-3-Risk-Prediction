@@ -109,7 +109,8 @@ liquorRetail <-
     mutate(Legend = "Liquor_Retail")
 
 bus_stops <-
-  st_read("/Users/annaduan/Documents/GitHub/Project-3-Risk-Prediction/CTA_BusStops/CTA_BusStops.shp") %>%
+  st_read("E:/Upenn/CPLN508/assign3/Project-3-Risk-Prediction/CTA_BusStops/CTA_BusStops.shp") %>%
+  #st_read("/Users/annaduan/Documents/GitHub/Project-3-Risk-Prediction/CTA_BusStops/CTA_BusStops.shp") %>%
     dplyr::select(Y = POINT_Y, X = POINT_X) %>%
     na.omit() %>%
     st_as_sf(coords = c("X", "Y"), crs = 4326, agr = "constant") %>%
@@ -331,9 +332,9 @@ ggplot() +
 
 ```{r MAP 3: small multiple map of risk factors in fishnet}
 
+vas_net_noname <- subset(vars_net, select = -c(NAME))
 vars_net.long <- 
-  gather(vars_net, Variable, value, -geometry, -uniqueID)
-
+  gather(vas_net_noname, Variable, value, -geometry, -uniqueID)
 vars <- unique(vars_net.long$Variable)
 mapList <- list()
 
@@ -349,18 +350,18 @@ do.call(grid.arrange,c(mapList, ncol =3, top = "Risk Factors by Fishnet"))
 
 ###
 
-  vars <- unique(vars_net.long.nn$Variable)
-mapList <- list()
+vars.nn <- unique(vars_net.long.nn$Variable)
+mapList.nn <- list()
 
-for(i in vars){
-  mapList[[i]] <- 
+for(i in vars.nn){
+  mapList.nn[[i]] <- 
     ggplot() +
       geom_sf(data = filter(vars_net.long.nn, Variable == i), aes(fill=value), colour=NA) +
       scale_fill_viridis(name="") +
       labs(title=i) +
-      mapTheme()}   #AD: does this work for you?
+      mapTheme()}   #AD: does this work for you? #BC: it's now :D
 
-do.call(grid.arrange,c(mapList, ncol = 3, top = "Nearest Neighbor risk Factors by Fishnet"))
+do.call(grid.arrange,c(mapList.nn, ncol = 3, top = "Nearest Neighbor risk Factors by Fishnet"))
 
 
 ```
@@ -391,7 +392,7 @@ for(i in vars){
 
 do.call(grid.arrange,c(varList, ncol = 4, top = "Local Morans I statistics, Arrests"))
 
-##distance to hotspots##  #AD: I moved this here so that it's in the right place for when we knit
+##distance to hotspots##  #AD: I moved this here so that it's in the right place for when we knit ##BC: ok!
 final_net <-
   final_net %>% 
   mutate(arrests.isSig = 
@@ -491,6 +492,7 @@ reg.ss.cv <- crossValidate(
   dependentVariable = "countArrests",
   indVariables = reg.ss.vars) %>%
     dplyr::select(cvID = cvID, countArrests, Prediction, geometry)
+
   
 reg.spatialCV <- crossValidate(
   dataset = final_net,
@@ -590,7 +592,7 @@ reg.ss.cv %>%
   geom_sf(aes(fill = countArrests, colour = countArrests)) +
   scale_fill_viridis() +
   mapTheme()
-
+#BC: two legends?
 #comparing high arrest and low arrest areas
 st_drop_geometry(reg.summary) %>%
   group_by(Regression) %>%
